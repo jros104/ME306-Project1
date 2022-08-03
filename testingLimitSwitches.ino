@@ -18,8 +18,6 @@ const int encoderBL = 46, encoderBR = 44;
 // Declaring position on board
 volatile int xCoord, yCoord;
 
-// Defining 
-
 // For testing
 volatile int posL = 0, posR = 0;
 
@@ -30,8 +28,6 @@ volatile const int rectWidth = 5;
 volatile const int rectHeight = 10;
 
 volatile const int circDiam = 5;
-
-
 
 void setup() {
   isRunning = true;
@@ -58,21 +54,66 @@ void setup() {
   delay(100);
 
   FindHome();
+  //RightDiagonal(255, HIGH);
+  //delay(10000);
+
+  // Allowing encoder interrupts to occur
+  // Encoder A motorL/R interrupts
+  cli();
+  attachInterrupt(digitalPinToInterrupt(encoderAR), EncoderRInterrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(encoderAL), EncoderLInterrupt, RISING);
+  sei();
 }
 
 void loop() {
   // Polling to check if limits switches have been pressed
   CheckLimits();
 
-  isRunning ? RightDiagonal(255, HIGH) : Stop();
-  Serial.println(posR);
+  //isRunning ? RightDiagonal(255, HIGH) : Stop();
+  Serial.print(posR);
+  Serial.print("---");
+  Serial.print(posL);
+  Serial.print("\n");
 
   // Testing left motor
   //isRunning ? LeftDiagonal(255, HIGH) : Stop();
   //Serial.println(posL);
 
   // Testing drawing 50mm straight line
-  isRunning ? Horizontal(255, HIGH) : Stop();
+  /*if(isRunning) {
+    int i=0;
+    while(posR<=2120) {
+      CheckLimits();
+      Horizontal(255, HIGH);
+      Serial.println("1");
+      //i<=255 ? i+=5 : i=255;
+    }
+    Stop();
+    delay(500);
+    posR = 0;
+    while(posR<=2120) {
+      CheckLimits();
+      Vertical(255, HIGH);
+      Serial.println("2");
+    }
+    Stop();
+    delay(500);
+    posR = 0;
+    while(posR<=2120) {
+      CheckLimits();
+      Horizontal(255, LOW);
+    }
+    Stop();
+    delay(500);
+    posR = 0;
+    while(posR<=2120) {
+      CheckLimits();
+      Vertical(255, LOW);
+    }
+    Stop();
+  }
+  isRunning = false;*/
+  isRunning  ? Horizontal(255, HIGH) : Stop();
   
   delay(10);
 }
@@ -83,7 +124,7 @@ void FindHome(){
 
   // Finding the left limit switch
   while(!foundLeft){
-    Horizontal(200, LOW);
+    Horizontal(150, LOW);
     //Serial.println(digitalRead(leftSwitch));
     if (digitalRead(leftSwitch)){
       foundLeft = true;
@@ -92,15 +133,15 @@ void FindHome(){
   }
   delay(100);
   while(digitalRead(leftSwitch)){
-    Horizontal(200, HIGH);
+    Horizontal(150, HIGH);
   }
   Stop();
   delay(100);
   
   // Finding the bottom limit switch
   while(!foundBottom){
-    Vertical(200, LOW);
-    //Serial.println(digitalRead(bottomSwitch));
+    Vertical(150, LOW);
+    Serial.println(digitalRead(bottomSwitch));
     if (digitalRead(bottomSwitch)){
       foundBottom = true;
       Stop();
@@ -108,20 +149,22 @@ void FindHome(){
   }  
   delay(100);
   while(digitalRead(bottomSwitch)){
-    Vertical(200, HIGH);
+    Vertical(150, HIGH);
   }
   Stop();
-  delay(100);
+  delay(10000);
   foundHome = true;
+  Serial.println("Exiting home");
 
   // Allowing encoder interrupts to occur
   // Encoder A motorL/R interrupts
-  attachInterrupt(digitalPinToInterrupt(encoderAL), EncoderRInterrupt, RISING);
-  attachInterrupt(digitalPinToInterrupt(encoderBL), EncoderLInterrupt, RISING);
+  //attachInterrupt(digitalPinToInterrupt(encoderAL), EncoderRInterrupt, RISING);
+  //attachInterrupt(digitalPinToInterrupt(encoderBL), EncoderLInterrupt, RISING);
 
   // Declaring origin
   xCoord = 0;
   yCoord = 0;
+  
 }
 
 void CheckLimits(){
@@ -133,22 +176,24 @@ void CheckLimits(){
 void EncoderRInterrupt() {
   // Check to see if encoder is working
   // Right diagonal -> right motor counter clockwise
-  int encoderBState = digitalRead(encoderBR);
-
-  encoderBState > 0 ? posR++ : posR--;
+//  int encoderBState = digitalRead(encoderBR);
+//  encoderBState > 0 ? posR++ : posR--;
 
   /*
    * Test drawing 50mm line
    */
-//  if(posR == 8212) {
-//    Stop();
-//  } else {
-//    posR++;
-//  } 
+  if(posR == 2120) {
+    Stop();
+    posR = 3000;
+    //isRunning = false;
+  } else {
+    posR++;
+  } 
 }
 
 void EncoderLInterrupt() {
   // Check to see if encoder is working
+  //Serial.println("Entering interrupt left motor");
   int encoderBState = digitalRead(encoderBL);
 
   encoderBState > 0 ? posL++ : posL--;
