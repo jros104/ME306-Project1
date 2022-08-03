@@ -9,11 +9,29 @@ const int motorLDir = 7, motorLSpeed = 6;
 volatile bool isRunning;
 volatile bool foundHome = false;
 
-// Declaring encoder a pins
+// Declaring encoder a pins for left and right motors
 const int encoderAL = 2, encoderAR = 3; 
 
-// Declaring encoder b pins
+// Declaring encoder b pins for left and right motors
 const int encoderBL = 46, encoderBR = 44;
+
+// Declaring position on board
+volatile int xCoord, yCoord;
+
+// Defining 
+
+// For testing
+volatile int posL = 0, posR = 0;
+
+/*
+ * RECTANGLE WIDTH AND HEIGHT, CIRCLE DIAMETER
+ */
+volatile const int rectWidth = 5;
+volatile const int rectHeight = 10;
+
+volatile const int circDiam = 5;
+
+
 
 void setup() {
   isRunning = true;
@@ -34,10 +52,6 @@ void setup() {
   pinMode(encoderAR, INPUT_PULLUP);
   pinMode(encoderBL, INPUT_PULLUP);
   pinMode(encoderBR, INPUT_PULLUP);
-
-  // Encoder A motorL/R interrupts
-  //attachInterrupt(digitalPinToInterrupt(encoderAL), EncoderRInterrupt, RISING);
-  //attachInterrupt(digitalPinToInterrupt(encoderAL), EncoderLInterrupt, RISING);
   
   Stop();
 
@@ -47,16 +61,19 @@ void setup() {
 }
 
 void loop() {
+  // Polling to check if limits switches have been pressed
   CheckLimits();
 
   isRunning ? RightDiagonal(255, HIGH) : Stop();
+  Serial.println(posR);
 
-  /*if (isRunning){
-    RightDiagonal(255, HIGH);
-  }else{
-    Stop();
-  }*/
-  Serial.println(isRunning);
+  // Testing left motor
+  //isRunning ? LeftDiagonal(255, HIGH) : Stop();
+  //Serial.println(posL);
+
+  // Testing drawing 50mm straight line
+  isRunning ? Horizontal(255, HIGH) : Stop();
+  
   delay(10);
 }
 
@@ -96,7 +113,15 @@ void FindHome(){
   Stop();
   delay(100);
   foundHome = true;
-  Serial.println("Exiting home");
+
+  // Allowing encoder interrupts to occur
+  // Encoder A motorL/R interrupts
+  attachInterrupt(digitalPinToInterrupt(encoderAL), EncoderRInterrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(encoderBL), EncoderLInterrupt, RISING);
+
+  // Declaring origin
+  xCoord = 0;
+  yCoord = 0;
 }
 
 void CheckLimits(){
@@ -106,21 +131,29 @@ void CheckLimits(){
 }
 
 void EncoderRInterrupt() {
-  
+  // Check to see if encoder is working
+  // Right diagonal -> right motor counter clockwise
+  int encoderBState = digitalRead(encoderBR);
+
+  encoderBState > 0 ? posR++ : posR--;
+
+  /*
+   * Test drawing 50mm line
+   */
+//  if(posR == 8212) {
+//    Stop();
+//  } else {
+//    posR++;
+//  } 
 }
 
 void EncoderLInterrupt() {
+  // Check to see if encoder is working
+  int encoderBState = digitalRead(encoderBL);
+
+  encoderBState > 0 ? posL++ : posL--;
   
 }
-
-/*void SwitchLimit(){
-  if(!foundHome){
-    isRunning = false;
-    Serial.println("Interrupt");
-  }
-  //isRunning = false;
-  //Serial.println("Interrupt");
-}*/
 
 void Horizontal(int motorSpeed, int horDir){
     analogWrite(motorRSpeed, motorSpeed);
