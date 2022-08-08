@@ -2,9 +2,9 @@
 const int leftSwitch = 18, rightSwitch = 19, topSwitch = 21, bottomSwitch = 20;
 
 // Motor 1 pins
-const int motorRDir = 4, motorRSpeed = 5;
+const int motorRDirPin = 4, motorRSpeedPin = 5;
 // Motor 2 pins
-const int motorLDir = 7, motorLSpeed = 6;
+const int motorLDirPin = 7, motorLSpeedPin = 6;
 
 volatile bool isRunning;
 volatile bool foundHome = false;
@@ -40,8 +40,8 @@ void setup() {
   pinMode(bottomSwitch, INPUT_PULLUP);
 
   // Motor pin setup
-  pinMode(motorRDir, OUTPUT);
-  pinMode(motorLDir, OUTPUT);
+  pinMode(motorRDirPin, OUTPUT);
+  pinMode(motorLDirPin, OUTPUT);
 
   // Encoder pin setup
   pinMode(encoderAL, INPUT_PULLUP);
@@ -65,9 +65,43 @@ void setup() {
   sei();
 }
 
+bool testPID = false;
+
 void loop() {
   // Polling to check if limits switches have been pressed
   CheckLimits();
+
+  /*
+   * PID Controller test
+   */
+   while(!testPID) {
+    CheckLimits();
+
+    // Defining PID constants
+    float Kp = 1;
+    float Ki = 0;
+    float Kd = 0; 
+
+    float targetDist = 50; // 50mm
+
+    // Computing error based of current count
+    float error = targetDist - CountToDistance(posR);
+
+    // Calculating control signal using PID constants
+    float u = Kp*error; 
+
+    // Calculting required pwm signal based off motor speed
+    float pwmSignal = abs(u);
+
+    // Moving motor based off the pwm signal
+    Horizontal(pwmSignal, HIGH);
+
+    // If error is within 0.1mm stop motors and exit loop
+    if(abs(u) < 0.1) {
+      Stop();
+      testPID = true;
+    }
+   }
 
   //isRunning ? RightDiagonal(255, HIGH) : Stop();
   Serial.print(posR);
@@ -113,7 +147,10 @@ void loop() {
     Stop();
   }
   isRunning = false;*/
-  isRunning  ? Horizontal(255, HIGH) : Stop();
+  
+  
+  
+  //isRunning  ? Horizontal(255, HIGH) : Stop();
   
   delay(10);
 }
@@ -173,62 +210,70 @@ void CheckLimits(){
   }
 }
 
-void EncoderRInterrupt() {
-  // Check to see if encoder is working
-  // Right diagonal -> right motor counter clockwise
-//  int encoderBState = digitalRead(encoderBR);
-//  encoderBState > 0 ? posR++ : posR--;
+float CountToDistance(int count) {
+  // 2064 counts/rev from the encoder
+  // Calibration test: 2120 counts = 50mm
+  int calCount = 2120;
+  int calDist = 50; // distance in mm
+  float pulleyDiam = (float)calDist / (PI*(calCount/2064));
 
+  return (PI*pulleyDiam*(float)count)/(float)(2064); // corresponding distance in mm
+}
+
+void EncoderRInterrupt() {
   /*
    * Test drawing 50mm line
    */
-  if(posR == 2120) {
+  /*if(posR == 2120) {
     Stop();
     posR = 3000;
     //isRunning = false;
   } else {
     posR++;
-  } 
+  } */
+
+  if(testPID) posR++;
 }
 
 void EncoderLInterrupt() {
   // Check to see if encoder is working
   //Serial.println("Entering interrupt left motor");
-  int encoderBState = digitalRead(encoderBL);
+  /*int encoderBState = digitalRead(encoderBL);
 
-  encoderBState > 0 ? posL++ : posL--;
+  encoderBState > 0 ? posL++ : posL--;*/
+  if(testPID) posL++;
   
 }
 
 void Horizontal(int motorSpeed, int horDir){
-    analogWrite(motorRSpeed, motorSpeed);
-    analogWrite(motorLSpeed, motorSpeed);
-    digitalWrite(motorRDir, horDir);
-    digitalWrite(motorLDir, horDir);
+    analogWrite(motorRSpeedPin, motorSpeed);
+    analogWrite(motorLSpeedPin, motorSpeed);
+    digitalWrite(motorRDirPin, horDir);
+    digitalWrite(motorLDirPin, horDir);
 }
 
 void Vertical(int motorSpeed, int verDir){
-    analogWrite(motorRSpeed, motorSpeed);
-    analogWrite(motorLSpeed, motorSpeed);
-    digitalWrite(motorRDir, !verDir);
-    digitalWrite(motorLDir, verDir);
+    analogWrite(motorRSpeedPin, motorSpeed);
+    analogWrite(motorLSpeedPin, motorSpeed);
+    digitalWrite(motorRDirPin, !verDir);
+    digitalWrite(motorLDirPin, verDir);
 }
 
 void LeftDiagonal(int motorSpeed, int verDir){
-    analogWrite(motorRSpeed, motorSpeed*verDir);
-    analogWrite(motorLSpeed, motorSpeed*!verDir);
-    digitalWrite(motorRDir, !verDir);
-    digitalWrite(motorLDir, verDir);
+    analogWrite(motorRSpeedPin, motorSpeed*verDir);
+    analogWrite(motorLSpeedPin, motorSpeed*!verDir);
+    digitalWrite(motorRDirPin, !verDir);
+    digitalWrite(motorLDirPin, verDir);
 }
 
 void RightDiagonal(int motorSpeed, int verDir){
-    analogWrite(motorRSpeed, motorSpeed*!verDir);
-    analogWrite(motorLSpeed, motorSpeed*verDir);
-    digitalWrite(motorRDir, !verDir);
-    digitalWrite(motorLDir, verDir);
+    analogWrite(motorRSpeedPin, motorSpeed*!verDir);
+    analogWrite(motorLSpeedPin, motorSpeed*verDir);
+    digitalWrite(motorRDirPin, !verDir);
+    digitalWrite(motorLDirPin, verDir);
 }
 
 void Stop(){
-    analogWrite(motorRSpeed, 0);
-    analogWrite(motorLSpeed, 0);
+    analogWrite(motorRSpeedPin, 0);
+    analogWrite(motorLSpeedPin, 0);
 }
