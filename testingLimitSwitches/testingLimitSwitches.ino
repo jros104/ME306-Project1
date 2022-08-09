@@ -9,8 +9,8 @@ class PIDController{
     float Ki;
     float Kd;
     
-    int sumError;
-    int prevError;
+    float sumError;
+    float prevError;
     float P, I, D;
   public:
     // Contructor
@@ -45,6 +45,8 @@ class PIDController{
       if (dt != 0){
         D = Kd * ((error - prevError) / dt);
       }
+
+      //Serial.println(sumError);
       
       // Updating the previous Error
       prevError = error;
@@ -66,7 +68,7 @@ class PIDController{
 
 // ######################################################### ARDUINO CODE SETUP #########################################################
 
-#define ACCELERATION_TIME 100
+#define ACCELERATION_TIME 300
 
 #define CALCOUNT 2300.0
 #define CALDIST 50.0
@@ -132,7 +134,8 @@ void setup() {
 //    delay(10);
 //  }
 
-  FindHome();
+  //FindHome();
+  
   
   // Allowing encoder interrupts to occur
   // Encoder A motorL/R interrupts
@@ -140,26 +143,39 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(encoderAR), EncoderRInterrupt, RISING);
   attachInterrupt(digitalPinToInterrupt(encoderAL), EncoderLInterrupt, RISING);
   sei();
+
+  FindHomeV2();
 }
 
 // ######################################################### LOOP #########################################################
 
 void loop() {
   //CheckLimits();
-  
+  isRunning = true; 
   posR = 0;
   posL = 0;
 
-  for(int i=0; i<300; i++) {
-    RightDiagonal(100, HIGH);
-    delay(10);
-    //CheckLimits();
-  }
+  
+//  for(int i=0; i<300; i++) {
+//    RightDiagonal(100, HIGH);
+//    delay(10);
+//    //CheckLimits();
+//  }
+  
   Stop();
 
-  delay(10000);
+  delay(2000);
 
-  MoveDistance(40,0,1,0,0, true);
+  //MoveDistance(0,-100,0.5,0.01,0, true);
+  //delay(1000);
+  //MoveDistance(0,-50,0.5,0.01,0, true);
+
+  MoveDistance(20,25,0.5,0.01,0, true);
+  MoveDistance(0,60,0.5,0.01,0, true);
+  MoveDistance(60,0,0.5,0.01,0, true);
+  MoveDistance(0,-60,0.5,0.01,0, true);
+  MoveDistance(-60,0,0.5,0.01,0, true);
+
 
   delay(10);
 }
@@ -215,11 +231,13 @@ void FindHome(){
 }
 
 void FindHomeV2(){
-  MoveDistance(-500, 0, 0.5, 0, 0, true);
+  Serial.println("Finding Left Switch");
+  MoveDistance(-500, 0, 0.1, 0, 0, true);
   delay(100);
   isRunning = true;
 
-  MoveDistance(0, -500, 0.5, 0, 0, true);
+  Serial.println("Finding Bottom Switch");
+  MoveDistance(0, -500, 0.1, 0, 0, true);
   delay(100);
   isRunning = true;
 
@@ -234,10 +252,26 @@ void CheckLimits(){
   if (digitalRead(topSwitch) || digitalRead(bottomSwitch) || digitalRead(rightSwitch) || digitalRead(leftSwitch)){
 
     // Move the head away from the switch
-    if(digitalRead(topSwitch)) { MoveDistance(0, -30, 0.5, 0, 0, false); }
-    if(digitalRead(bottomSwitch)) { MoveDistance(0, 30, 0.5, 0, 0, false); }
-    if(digitalRead(rightSwitch)) { MoveDistance(-30, 0, 0.5, 0, 0, false); }
-    if(digitalRead(leftSwitch)) { MoveDistance(30, 0, 0.5, 0, 0, false); }
+    
+    if(digitalRead(topSwitch)) { 
+      Serial.println("Top Switch");
+      MoveDistance(0, -10, 0.5, 0, 0, false); 
+      
+    }
+    if(digitalRead(bottomSwitch)) { 
+      Serial.println("Bottom Switch");
+      MoveDistance(0, 10, 0.5, 0, 0, false); 
+      
+    }
+    if(digitalRead(rightSwitch)) { 
+      Serial.println("Right Switch");
+      MoveDistance(-10, 0, 0.5, 0, 0, false); 
+    }
+    if(digitalRead(leftSwitch)) { 
+      Serial.println("Left Switch");
+      MoveDistance(10, 0, 0.5, 0, 0, false); 
+    }
+    
     
     isRunning = false; 
 
@@ -257,12 +291,12 @@ float DistanceToCount(int distance) {
 
 void EncoderRInterrupt() {
    int encoderBState = digitalRead(encoderBR);
-   encoderBState > 0 ? posR++ : posR--;
+   encoderBState > 0 ? posR-- : posR++;
 }
 
 void EncoderLInterrupt() {
   int encoderBState = digitalRead(encoderBL);
-  encoderBState > 0 ? posL++ : posL--;
+  encoderBState > 0 ? posL--: posL++;
 }
 
 // =========================== SATURATE ===========================
@@ -286,7 +320,7 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, bool c
    
     // Create the PID Controllers with the assigned values
     PIDController motorPID(Kp, Ki, Kd);         // Motor base power PID controller
-    PIDController motorDiffPID(0.5,0,0);        // Encoder difference PID controller
+    PIDController motorDiffPID(2,0.01,0);        // Encoder difference PID controller
    
     float controlEffortL, controlEffortR, controlEffortDiff, dt, motorLError, motorRError, encError;
     float initialTime = millis();
@@ -296,14 +330,16 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, bool c
     posL = 0;       // Reset left encoder
     posR = 0;       // Reset right encoder
 
-    float leftDistFromKin = (xDist + yDist); 
-    float rightDistFromKin = (xDist - yDist);
+    float motorLEncTarget = DistanceToCount(xDist + yDist);
+    float motorREncTarget = DistanceToCount(xDist - yDist);
 
-    float motorLEncTarget = DistanceToCount(leftDistFromKin);
-    float motorREncTarget = DistanceToCount(rightDistFromKin);
-
-    float encRatio = motorLEncTarget / motorREncTarget;
-
+    float encRatio = abs(motorLEncTarget / motorREncTarget);
+    Serial.print("X: ");
+    Serial.print(xDist);
+    Serial.print(" Y: ");
+    Serial.println(yDist);
+//    Serial.println(isRunning);
+    Serial.println(sign(motorLEncTarget) == sign(motorREncTarget));
     bool canExit = false;
    
     do{
@@ -312,40 +348,77 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, bool c
 
       // Calculating PID control efforts for the motor base powers and the encoder variation motor powers
       motorLError = motorLEncTarget - posL;
-      motorRError = motorREncTarget - posR;
-      encError = posL - (posR * encRatio);                                    // Applying the encoder ration to the error calc
+      encError = sign(motorLEncTarget) == sign(motorREncTarget) ? posL - (posR * encRatio) : posL - (-posR * encRatio);          // Applying the encoder ratio to the error calc
 
-      controlEffortL = motorPID.CalculateEffort(motorLError, 235, dt);        // Left motor control effort calculation
-      controlEffortR = motorPID.CalculateEffort(motorRError, 235, dt);        // Right motor control effort calculation
-      controlEffortDiff = motorDiffPID.CalculateEffort(encError, 40, dt);     // Encoder error control effort calculation
+      controlEffortL = motorPID.CalculateEffort(motorLError, 100, dt);        // Left motor control effort calculation
+      controlEffortDiff = motorDiffPID.CalculateEffort(encError, 30, dt);     // Encoder error control effort calculation
 
-      controlEffortL = saturate(controlEffortL - (controlEffortDiff / 2.0),-255, 255);    
-      controlEffortR = saturate(controlEffortR + (controlEffortDiff / 2.0),-255, 255);
+      controlEffortL = ((millis() - initialTime) < ACCELERATION_TIME) ? controlEffortL * ((millis() - initialTime) / ACCELERATION_TIME) : controlEffortL;
+      controlEffortR = sign(motorLEncTarget) == sign(motorREncTarget) ? controlEffortL / encRatio : -controlEffortL / encRatio ;
+
+
+      if (sign(motorLEncTarget) == sign(motorREncTarget)){
+        controlEffortL = controlEffortL - (controlEffortDiff);
+        controlEffortR = controlEffortR + (controlEffortDiff);
+      }else{
+        controlEffortL = controlEffortL + (controlEffortDiff);
+        controlEffortR = controlEffortR - (controlEffortDiff);
+      }
+      
+
+      int signL = sign(motorLError);
+
+
+      
+      if (signL == 1){
+        controlEffortL = saturate(controlEffortL, 60, 255);
+        if (sign(motorLEncTarget) == sign(motorREncTarget)){
+          controlEffortR = saturate(controlEffortR, 60, 255);
+        }else{
+          controlEffortR = saturate(controlEffortR, -255, -60);
+        }
+        
+      }else if (signL == -1){
+        controlEffortL = saturate(controlEffortL, -255, -60);
+        if (sign(motorLEncTarget) != sign(motorREncTarget)){
+          controlEffortR = saturate(controlEffortR, 60, 255);
+        }else{
+          controlEffortR = saturate(controlEffortR, -255, -60);
+        }
+      }
+
+      
+      //controlEffortL = signL == 1 ? saturate(controlEffortL, 50, 255): saturate(controlEffortL, -255, -50);
+      //controlEffortR = signL == 1 ? saturate(controlEffortR, 50, 255): saturate(controlEffortR, -255, -50);
 
       analogWrite(motorLSpeedPin, abs(controlEffortL));
       analogWrite(motorRSpeedPin, abs(controlEffortR));
+
+//      Serial.print("R Effort: ");
+//      Serial.println(controlEffortR);
+//
+//      Serial.print("L Effort: ");
+//      Serial.println(controlEffortL);
+////
+      Serial.print("base error: ");
+      Serial.println(motorLError);
+
+//      Serial.print("enc error: ");
+      //Serial.print(encError);
 
       digitalWrite(motorLDirPin, sign(controlEffortL) == -1 ? 0 : 1);         // Setting the motor direction to either 0 or 1 depending on the sign
       digitalWrite(motorRDirPin, sign(controlEffortR) == -1 ? 0 : 1);
      
       // Exit Condition (NEEDS MORE)
-      if (abs(motorLError) <= 5 && abs(motorRError) <= 5){
-        exitTime += dt;
-      }else{
-        exitTime = 0;
-      }
-
-      if (exitTime > 200){
+      if (abs(motorLError) <= 20){
+        Serial.println("Exiting");
         canExit = true;
       }
-
+      delay(1);
       prevTime = millis();
       if (checkLimits) CheckLimits();
-      delay(1);
-
     } while(!canExit && isRunning);
     Stop();
-    delay(10000);
 }
 
 // =========================== BASIC MOTOR FUNCTIONS ===========================
@@ -381,4 +454,3 @@ void Stop(){
     analogWrite(motorRSpeedPin, 0);
     analogWrite(motorLSpeedPin, 0);
 }
-
