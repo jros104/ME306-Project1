@@ -69,6 +69,7 @@ class PIDController{
 // ######################################################### ARDUINO CODE SETUP #########################################################
 
 #define ACCELERATION_TIME 300
+#define EXIT_THRESHOLD 5
 
 #define CALCOUNT 2300.0
 #define CALDIST 50.0
@@ -156,26 +157,9 @@ void loop() {
   posR = 0;
   posL = 0;
 
-  
-//  for(int i=0; i<300; i++) {
-//    RightDiagonal(100, HIGH);
-//    delay(10);
-//    //CheckLimits();
-//  }
-  
   Stop();
 
   delay(2000);
-
-  //MoveDistance(0,-100,0.5,0.01,0, true);
-  //delay(1000);
-  //MoveDistance(0,-50,0.5,0.01,0, true);
-
-  //MoveDistance(0, 60, 0.5, 0, 0, true);
-
-  
-
-
   // Drawing a square
   MoveDistance(0,60,0.5,0.01,0, 100, true);
   MoveDistance(60,0,0.5,0.01,0, 100, true);
@@ -187,54 +171,6 @@ void loop() {
 
 // ######################################################### FUNCTIONS #########################################################
 // =========================== FIND HOME ===========================
-void FindHome(){
-  //Serial.println("Entering home");
-  bool foundLeft = false, foundBottom = false;
-
-  // Finding the left limit switch
-  while(!foundLeft){
-    Horizontal(100, LOW);
-    Serial.println(digitalRead(leftSwitch));
-    if (digitalRead(leftSwitch)){
-      foundLeft = true;
-      Stop();
-    }
-    delay(10);
-  }
-  delay(500);
-  while(digitalRead(leftSwitch)){
-    Horizontal(100, HIGH);
-    delay(10);
-  }
-  Stop();
-  delay(500);
-  
-  // Finding the bottom limit switch
-  while(!foundBottom){
-    Vertical(100, LOW);
-    Serial.println(digitalRead(bottomSwitch));
-    if (digitalRead(bottomSwitch)){
-      foundBottom = true;
-      Stop();
-    }
-    delay(10);
-  }  
-  delay(500);
-  while(digitalRead(bottomSwitch)){
-    Vertical(100, HIGH);
-    delay(10);
-  }
-  Stop();
-  delay(1000);
-  foundHome = true;
-  Serial.println("Exiting home");
-
-  // Declaring origin
-  xCoord = 0;
-  yCoord = 0;
-  
-}
-
 void FindHomeV2(){
   Serial.println("Finding Bottom Switch");
   MoveDistance(0, -500, 0.05, 0, 0, 70, true);
@@ -245,8 +181,6 @@ void FindHomeV2(){
   MoveDistance(-500, 0, 0.05, 0, 0, 70, true);
   delay(100);
   isRunning = true;
-
-  
 
   delay(1000);
   // Declaring origin
@@ -259,7 +193,6 @@ void CheckLimits(){
   if (digitalRead(topSwitch) || digitalRead(bottomSwitch) || digitalRead(rightSwitch) || digitalRead(leftSwitch)){
 
     // Move the head away from the switch
-    
     if(digitalRead(topSwitch)) { 
       Serial.println("Top Switch");
       MoveDistance(0, -10, 0.2, 0, 0, 100, false); 
@@ -281,8 +214,6 @@ void CheckLimits(){
     
     
     isRunning = false; 
-
-    //while(1) Stop();
   }
 }
 
@@ -344,7 +275,7 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, float 
     bool canExit = false;
     bool checkingExit = false;
 
-    float prevError;
+    float prevErrorL = 0;
 
     Serial.print("X: ");
     Serial.print(xDist);
@@ -367,69 +298,50 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, float 
       controlEffortR = controlEffortL / encRatio;
       controlEffortR = controlEffortR + (controlEffortDiff) * sign(encRatio);
 
-      //int signL = sign(motorLError);
-
-
-      /*
-      if (signL == 1){
-        controlEffortL = saturate(controlEffortL, 60, 255);
-        if (sign(motorLEncTarget) == sign(motorREncTarget)){
-          controlEffortR = saturate(controlEffortR, 60, 255);
-        }else{
-          controlEffortR = saturate(controlEffortR, -255, -60);
-        }
-        
-      }else if (signL == -1){
-        controlEffortL = saturate(controlEffortL, -255, -60);
-        if (sign(motorLEncTarget) != sign(motorREncTarget)){
-          controlEffortR = saturate(controlEffortR, 60, 255);
-        }else{
-          controlEffortR = saturate(controlEffortR, -255, -60);
-        }
-      }
-      */
-      
-      //controlEffortL = signL == 1 ? saturate(controlEffortL, 50, 255): saturate(controlEffortL, -255, -50);
-      //controlEffortR = signL == 1 ? saturate(controlEffortR, 50, 255): saturate(controlEffortR, -255, -50);
-
       analogWrite(motorLSpeedPin, abs(controlEffortL));
       analogWrite(motorRSpeedPin, abs(controlEffortR));
-
-//      Serial.print("R Effort: ");
-//      Serial.println(controlEffortR);
-//
-//      Serial.print("L Effort: ");
-//      Serial.println(controlEffortL);
-//////
-//      Serial.print("base error: ");
-//      Serial.println(motorLError);
-
-      Serial.print("enc error: ");
-      Serial.println(encError);
 
       digitalWrite(motorLDirPin, sign(controlEffortL) == -1 ? 0 : 1);         // Setting the motor direction to either 0 or 1 depending on the sign
       digitalWrite(motorRDirPin, sign(controlEffortR) == -1 ? 0 : 1);
      
-      // Exit Condition (NEEDS MORE)
+      // Exit Condition   
 
-//        Serial.print("current error - prev error ");
-//        Serial.println(abs(motorLError - prevError));
+      Serial.print("Prev Error: ");
+      Serial.println(prevErrorL);
+
+      Serial.print("Current Error: ");
+      Serial.println(motorLError);
+
+      Serial.print("Current Error - prev Error: ");
+      Serial.println(abs(motorLError - prevErrorL));
       
-      if (checkingExit == false && (abs(motorLError) <= 20 || abs(motorLError - prevError) == 0)){
+      if (checkingExit == false && (abs(motorLError) <= EXIT_THRESHOLD || abs(motorLError - prevErrorL) == 0)){
         checkingExit = true;
         exitTime = millis();
+
+        if (abs(motorLError) <= EXIT_THRESHOLD){
+          Serial.println("within threshold");
+        }
+
+        if (abs(motorLError - prevErrorL) == 0){
+          Serial.println("No changing error");
+        }
       }
 
-      if (checkingExit == true && (abs(motorLError) > 20 && abs(motorLError - prevError) != 0)){
+      if (checkingExit == true && (abs(motorLError) > 20 && abs(motorLError - prevErrorL) != 0)){
         checkingExit = false;
       }
 
       if (checkingExit == true && (millis() - exitTime > 200)){
+         Serial.println("Can Exit");
         canExit = true;
       }
+
+      
+      
       delay(1);
       prevTime = millis();
-      prevError = motorLError;
+      prevErrorL = motorLError;
       if (checkLimits) CheckLimits();
     } while(!canExit && isRunning);
     Stop();
