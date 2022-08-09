@@ -145,6 +145,7 @@ void setup() {
   sei();
 
   FindHomeV2();
+  MoveDistance(20,25,0.5,0.01,0, 100, true);
 }
 
 // ######################################################### LOOP #########################################################
@@ -170,14 +171,18 @@ void loop() {
   //delay(1000);
   //MoveDistance(0,-50,0.5,0.01,0, true);
 
-  MoveDistance(20,25,0.5,0.01,0, true);
-  MoveDistance(0,60,0.5,0.01,0, true);
-  MoveDistance(60,0,0.5,0.01,0, true);
-  MoveDistance(0,-60,0.5,0.01,0, true);
-  MoveDistance(-60,0,0.5,0.01,0, true);
+  //MoveDistance(0, 60, 0.5, 0, 0, true);
+
+  
 
 
-  delay(10);
+  // Drawing a square
+  MoveDistance(0,60,0.5,0.01,0, 100, true);
+  MoveDistance(60,0,0.5,0.01,0, 100, true);
+  MoveDistance(0,-60,0.5,0.01,0, 100, true);
+  MoveDistance(-60,0,0.5,0.01,0, 100, true);
+
+  delay(1000);
 }
 
 // ######################################################### FUNCTIONS #########################################################
@@ -231,15 +236,17 @@ void FindHome(){
 }
 
 void FindHomeV2(){
+  Serial.println("Finding Bottom Switch");
+  MoveDistance(0, -500, 0.05, 0, 0, 70, true);
+  delay(100);
+  isRunning = true;
+  
   Serial.println("Finding Left Switch");
-  MoveDistance(-500, 0, 0.1, 0, 0, true);
+  MoveDistance(-500, 0, 0.05, 0, 0, 70, true);
   delay(100);
   isRunning = true;
 
-  Serial.println("Finding Bottom Switch");
-  MoveDistance(0, -500, 0.1, 0, 0, true);
-  delay(100);
-  isRunning = true;
+  
 
   delay(1000);
   // Declaring origin
@@ -255,21 +262,21 @@ void CheckLimits(){
     
     if(digitalRead(topSwitch)) { 
       Serial.println("Top Switch");
-      MoveDistance(0, -10, 0.5, 0, 0, false); 
+      MoveDistance(0, -10, 0.2, 0, 0, 100, false); 
       
     }
     if(digitalRead(bottomSwitch)) { 
       Serial.println("Bottom Switch");
-      MoveDistance(0, 10, 0.5, 0, 0, false); 
+      MoveDistance(0, 10, 0.2, 0, 0, 100, false); 
       
     }
     if(digitalRead(rightSwitch)) { 
       Serial.println("Right Switch");
-      MoveDistance(-10, 0, 0.5, 0, 0, false); 
+      MoveDistance(-10, 0, 0.2, 0, 0, 100, false); 
     }
     if(digitalRead(leftSwitch)) { 
       Serial.println("Left Switch");
-      MoveDistance(10, 0, 0.5, 0, 0, false); 
+      MoveDistance(10, 0, 0.2, 0, 0, 100, false); 
     }
     
     
@@ -316,11 +323,11 @@ int sign(float value){
 // Requires Kp, Ki, Kd
 // Checklimits bool decides whether the function will check to see if it hits the limit switch
 // (used for the FindHomeV2)
-void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, bool checkLimits){
+void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, float saturationLimit, bool checkLimits){
    
     // Create the PID Controllers with the assigned values
     PIDController motorPID(Kp, Ki, Kd);         // Motor base power PID controller
-    PIDController motorDiffPID(2,0.01,0);        // Encoder difference PID controller
+    PIDController motorDiffPID(2,0,0);        // Encoder difference PID controller
    
     float controlEffortL, controlEffortR, controlEffortDiff, dt, motorLError, motorRError, encError;
     float initialTime = millis();
@@ -333,14 +340,16 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, bool c
     float motorLEncTarget = DistanceToCount(xDist + yDist);
     float motorREncTarget = DistanceToCount(xDist - yDist);
 
-    float encRatio = abs(motorLEncTarget / motorREncTarget);
+    float encRatio = motorLEncTarget == 0 || motorREncTarget == 0 ? 0 : motorLEncTarget / motorREncTarget;
+    bool canExit = false;
+    bool checkingExit = false;
+
+    float prevError;
+
     Serial.print("X: ");
     Serial.print(xDist);
     Serial.print(" Y: ");
     Serial.println(yDist);
-//    Serial.println(isRunning);
-    Serial.println(sign(motorLEncTarget) == sign(motorREncTarget));
-    bool canExit = false;
    
     do{
       if (checkLimits) CheckLimits();
@@ -348,28 +357,20 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, bool c
 
       // Calculating PID control efforts for the motor base powers and the encoder variation motor powers
       motorLError = motorLEncTarget - posL;
-      encError = sign(motorLEncTarget) == sign(motorREncTarget) ? posL - (posR * encRatio) : posL - (-posR * encRatio);          // Applying the encoder ratio to the error calc
+      encError = posL - (posR * encRatio);         // Applying the encoder ratio to the error calc
 
-      controlEffortL = motorPID.CalculateEffort(motorLError, 100, dt);        // Left motor control effort calculation
+      controlEffortL = motorPID.CalculateEffort(motorLError, saturationLimit, dt);        // Left motor control effort calculation
       controlEffortDiff = motorDiffPID.CalculateEffort(encError, 30, dt);     // Encoder error control effort calculation
 
-      controlEffortL = ((millis() - initialTime) < ACCELERATION_TIME) ? controlEffortL * ((millis() - initialTime) / ACCELERATION_TIME) : controlEffortL;
-      controlEffortR = sign(motorLEncTarget) == sign(motorREncTarget) ? controlEffortL / encRatio : -controlEffortL / encRatio ;
-
-
-      if (sign(motorLEncTarget) == sign(motorREncTarget)){
-        controlEffortL = controlEffortL - (controlEffortDiff);
-        controlEffortR = controlEffortR + (controlEffortDiff);
-      }else{
-        controlEffortL = controlEffortL + (controlEffortDiff);
-        controlEffortR = controlEffortR - (controlEffortDiff);
-      }
+      //controlEffortL = ((millis() - initialTime) < ACCELERATION_TIME) ? controlEffortL * ((millis() - initialTime) / ACCELERATION_TIME) : controlEffortL;
       
+      controlEffortR = controlEffortL / encRatio;
+      controlEffortR = controlEffortR + (controlEffortDiff) * sign(encRatio);
 
-      int signL = sign(motorLError);
+      //int signL = sign(motorLError);
 
 
-      
+      /*
       if (signL == 1){
         controlEffortL = saturate(controlEffortL, 60, 255);
         if (sign(motorLEncTarget) == sign(motorREncTarget)){
@@ -386,7 +387,7 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, bool c
           controlEffortR = saturate(controlEffortR, -255, -60);
         }
       }
-
+      */
       
       //controlEffortL = signL == 1 ? saturate(controlEffortL, 50, 255): saturate(controlEffortL, -255, -50);
       //controlEffortR = signL == 1 ? saturate(controlEffortR, 50, 255): saturate(controlEffortR, -255, -50);
@@ -399,23 +400,36 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, bool c
 //
 //      Serial.print("L Effort: ");
 //      Serial.println(controlEffortL);
-////
-      Serial.print("base error: ");
-      Serial.println(motorLError);
+//////
+//      Serial.print("base error: ");
+//      Serial.println(motorLError);
 
-//      Serial.print("enc error: ");
-      //Serial.print(encError);
+      Serial.print("enc error: ");
+      Serial.println(encError);
 
       digitalWrite(motorLDirPin, sign(controlEffortL) == -1 ? 0 : 1);         // Setting the motor direction to either 0 or 1 depending on the sign
       digitalWrite(motorRDirPin, sign(controlEffortR) == -1 ? 0 : 1);
      
       // Exit Condition (NEEDS MORE)
-      if (abs(motorLError) <= 20){
-        Serial.println("Exiting");
+
+//        Serial.print("current error - prev error ");
+//        Serial.println(abs(motorLError - prevError));
+      
+      if (checkingExit == false && (abs(motorLError) <= 20 || abs(motorLError - prevError) == 0)){
+        checkingExit = true;
+        exitTime = millis();
+      }
+
+      if (checkingExit == true && (abs(motorLError) > 20 && abs(motorLError - prevError) != 0)){
+        checkingExit = false;
+      }
+
+      if (checkingExit == true && (millis() - exitTime > 200)){
         canExit = true;
       }
       delay(1);
       prevTime = millis();
+      prevError = motorLError;
       if (checkLimits) CheckLimits();
     } while(!canExit && isRunning);
     Stop();
