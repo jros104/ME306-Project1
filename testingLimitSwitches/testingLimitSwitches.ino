@@ -380,3 +380,38 @@ void Stop(){
     analogWrite(motorRSpeedPin, 0);
     analogWrite(motorLSpeedPin, 0);
 }
+
+void Circle(float radius, int divisions){
+  float Angle = (PI * 2.0) / (float)divisions;
+  float xyDistances[divisions][2] = {0};
+  float deltaX = radius * (1 - cos(Angle));
+  float deltaY = radius * (sin(Angle));
+  xyDistances[0][0] = deltaX;
+  xyDistances[0][1] = deltaY
+  for (int i = 1 ; i < divisions; i++){
+    xyDistance[i][0] = (cos(Angle * xyDistance[i-1][0]) - sin(Angle * xyDistance[i-1][1]));
+    xyDistance[i][1] = (sin(Angle * xyDistance[i-1][0]) + cos(Angle * xyDistance[i-1][1]));
+  }
+
+  float A[divisions] = {0};
+  float B[divisions] = {0};
+
+  for (int i = 0; i < divisions; i++){
+    L[i] = DistanceToCount(xyDistance[i][0] + xyDistance[i][1]);
+    R[i] = DistanceToCount(xyDistance[i][0] - xyDistance[i][1]);
+  }
+
+  float SPEED:
+  float LSpeed, RSpeed;
+  for (int i = 0; i < divisions; i++){
+    float encRatio = L[i] / R[i];
+    while(abs(posL) <= abs(L[i])){
+      LSpeed = i > division / 4 || i > 3 * divisions / 4 ? SPEED: 0;
+    }
+  }
+    
+
+}
+
+
+
