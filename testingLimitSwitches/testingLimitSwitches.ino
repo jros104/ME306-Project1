@@ -145,11 +145,11 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(encoderAL), EncoderLInterrupt, RISING);
   sei();
 
-  // FindHomeV2();
-  // MoveDistance(100,0,0.5,0.01,0, 100, true);
-  // MoveDistance(0,60,0.5,0.01,0, 100, true);
-
-  CircleV2(20, 4);
+  FindHomeV2();
+  MoveDistance(100,0,0.5,0.01,0, 100, true);
+  MoveDistance(0,60,0.5,0.01,0, 100, true);
+  isRunning = true;
+  Circle(30,16);
 }
 
 // ######################################################### LOOP #########################################################
@@ -177,12 +177,12 @@ void loop() {
 // =========================== FIND HOME ===========================
 void FindHomeV2(){
   Serial.println("Finding Bottom Switch");
-  MoveDistance(0, -500, 0.05, 0, 0, 100, true);
+  MoveDistance(0, -1000, 0.05, 0, 0, 100, true);
   delay(100);
   isRunning = true;
   
   Serial.println("Finding Left Switch");
-  MoveDistance(-500, 0, 0.05, 0, 0, 100, true);
+  MoveDistance(-1000, 0, 0.05, 0, 0, 100, true);
   delay(100);
   isRunning = true;
 
@@ -310,7 +310,7 @@ void MoveDistance(float xDist, float yDist, float Kp, float Ki, float Kd, float 
      
       float currentError = abs(motorLError - prevErrorL);
       
-      if (checkingExit == false && (abs(motorLError) <= EXIT_THRESHOLD || currentError == 0)){
+      if (checkingExit == false && (abs(motorLError) <= EXIT_THRESHOLD || currentError == 0) && (abs(posL) > 0 || abs(posR) > 0)){
         checkingExit = true;
         exitTime = millis();
 
@@ -403,6 +403,13 @@ void Circle(float radius, int divisions){
     xyDistances[i][1] = (sin(Angle )* xyDistances[i-1][0] + cos(Angle)* xyDistances[i-1][1]);
   }
 
+//  for (int i = 0; i < divisions; i++){
+//    Serial.print("x: ");
+//    Serial.print(xyDistances[i][0]);
+//    Serial.print("      y: ");
+//    Serial.println(xyDistances[i][1]);
+//  }
+
   // A distances and B distances for the motor to move
   float L[divisions] = {0};
   float R[divisions] = {0};
@@ -412,28 +419,40 @@ void Circle(float radius, int divisions){
     R[i] = DistanceToCount(xyDistances[i][0] - xyDistances[i][1]);
   }
 
-  Serial.print(" L = ");
-  for (int i = 0; i < divisions; i++){
-    Serial.print(L[i]);
-    Serial.print(" ");
-  }
-  Serial.println();
+//  Serial.print(" L = ");
+//  for (int i = 0; i < divisions; i++){
+//    Serial.print(L[i]);
+//    Serial.print(" ");
+//  }
+//  Serial.println();
+//
+//  Serial.print(" R = ");
+//  for (int i = 0; i < divisions; i++){
+//    Serial.print(R[i]);
+//    Serial.print(" ");
+//  }
+//  Serial.println();
 
-  Serial.print(" R = ");
-  for (int i = 0; i < divisions; i++){
-    Serial.print(R[i]);
-    Serial.print(" ");
-  }
-  Serial.println();
+  PIDController motorDiffPID(0.5,0,0);
+  float controlEffortDiff;
   
   float SPEED = 200;
   float LSpeed, RSpeed;
   for (int i = 0; i < divisions; i++){
+    float encRatio;
+    Serial.print("Loop: ");
+    Serial.println(i);
     if (L[i] != 0 && R[i] != 0){
-      float encRatio = L[i] / R[i];
-  
-      LSpeed = SPEED;
-      RSpeed = SPEED / encRatio;
+      encRatio = abs(L[i] / R[i]);
+
+      if(L[i] >= R[i]){
+         LSpeed = SPEED;
+          RSpeed = SPEED / abs(encRatio);
+      }else{
+        RSpeed = SPEED;
+          LSpeed = SPEED *  abs(encRatio);
+      }
+     
   
       float totalSpeed = abs(LSpeed) + abs(RSpeed);
       float ratio = SPEED / totalSpeed;
@@ -459,7 +478,26 @@ void Circle(float radius, int divisions){
 
     bool canExit = false;
 
+    Serial.print("Left Speed = ");
+    Serial.print(LSpeed);
+    Serial.print("Right Speed = ");
+    Serial.println(RSpeed);
+
+    float dt, prevTime = millis();
+
     do{
+      dt = millis() - prevTime;
+      prevTime = millis();
+      if (L[i] != 0 && R[i] != 0){
+        int encError = abs(posL) - abs(L[i] >= R[i] ? posR / encRatio : posR * encRatio);
+        encError *= sign(R[i]);
+        controlEffortDiff = motorDiffPID.CalculateEffort(encError, 30, dt);
+        Serial.print("enc effort: ");
+        Serial.println(controlEffortDiff);
+      }
+      
+      
+      CheckLimits();
       if (abs(L[i]) != 0){
 //        Serial.print("abs(posL) = ");
 //        Serial.print(abs(posL));
@@ -475,29 +513,33 @@ void Circle(float radius, int divisions){
       }
       
       analogWrite(motorLSpeedPin, LSpeed);
-      analogWrite(motorRSpeedPin, RSpeed);
-      
-      digitalWrite(motorLDirPin, sign(L[i]) == -1 ? 0 : 1);
-      digitalWrite(motorRDirPin,  sign(R[i]) == -1 ? 0 : 1);
+      analogWrite(motorRSpeedPin, RSpeed - controlEffortDiff);
 
-      if (abs(posL) > abs(L[i]) && L[i] != 0){
+      digitalWrite(motorLDirPin, sign(L[i]) == -1 ? 0 : 1);       
+      digitalWrite(motorRDirPin, sign(R[i]) == -1 ? 0 : 1);
+
+      if (abs(posL) >= abs(L[i]) && L[i] != 0){
         canExit = true;
         Serial.println("Left motor reached Pos");
       }
 
-      if (abs(posR) > abs(R[i]) && R[i] != 0){
+      if (abs(posR) >= abs(R[i]) && R[i] != 0){
         canExit = true;
         Serial.println("Right motor reached Pos");
       }
+      
       delay(10);
       
-    }while(!canExit);
+    }while(!canExit && isRunning);
+    Serial.print("End of Loop: ");
+    Serial.println(i);
+    
   }
   Stop();
 
 }
 
-
+// Ignore for now
 void CircleV2(float radius, int divisions){
   float xyDistsFromCentre[divisions][2] = {0};
   float angle = (PI * 2.0) / (float)divisions;
