@@ -109,6 +109,8 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
             controlEffortDiff = motorDiffPID.CalculateEffort(errorEnc, 50, dt);
   
             controlEffortR += controlEffortL != 0 ? controlEffortDiff : 0;
+          }else{
+            controlEffortR = 0;
           }
           
        }else{
@@ -125,6 +127,8 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
             controlEffortDiff = motorDiffPID.CalculateEffort(errorEnc, 50, dt);
   
             controlEffortL += controlEffortR != 0 ? controlEffortDiff : 0;
+          }else{
+            controlEffortL = 0;
           }
        }
 
@@ -145,11 +149,11 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
        digitalWrite(motorRDirPin, sign(controlEffortR) == -1 ? 0 : 1);
 
               
-       if ((!rightDrive && abs(errorL) <= 20) || (rightDrive && abs(errorR) <= 20)){
+       if ((!rightDrive && abs(errorL) <= 5) || (rightDrive && abs(errorR) <= 5)){
         Print("Error on exit: ", rightDrive ? errorR : errorL);
         canExit = true;
        }
-       delay(10);
+       delay(1);
     }while(!canExit && isRunning);
     Stop();
 }
@@ -174,6 +178,7 @@ void CircleV2(float radius, int divisions, float kp, float ki, float kd, float s
   }
 
   for (int i = 0; i < divisions; i++){
+    isRunning = true;
     MoveDistanceV2(xyDistsToNext[i][0],xyDistsToNext[i][1], kp, ki, kd, saturationLimit, true);
   }
 
