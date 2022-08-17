@@ -32,22 +32,26 @@ void CheckLimits(){
     if(digitalRead(topSwitch)) { 
       Serial.println("Top Switch");
       MoveDistanceV2(0, -13, 0.2, 0, 0, 50, false); 
+      isRunning = false; 
       
     }
     if(digitalRead(bottomSwitch)) { 
       Serial.println("Bottom Switch");
       MoveDistanceV2(0, 13, 0.2, 0, 0, 50, false); 
+      isRunning = false; 
       
     }
     if(digitalRead(rightSwitch)) { 
       Serial.println("Right Switch");
       MoveDistanceV2(-13, 0, 0.2, 0, 0, 50, false); 
+      isRunning = false; 
     }
     if(digitalRead(leftSwitch)) { 
       Serial.println("Left Switch");
       MoveDistanceV2(13, 0, 0.2, 0, 0, 50, false); 
+      isRunning = false; 
     }
-    isRunning = false; 
+    
   }
 }
 
@@ -59,10 +63,10 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
    
     // Create the PID Controllers with the assigned values
     PIDController motorPID(Kp, Ki, Kd);         // Motor base power PID controller
-    PIDController motorDiffPID(1,0,0);        // Encoder difference PID controller
+    PIDController motorDiffPID(0.7,0.005,0);        // Encoder difference PID controller
    
     posL = 0;
-    posR = 0;
+    posR = 0;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         `
 
     bool canExit = false;
 
@@ -89,8 +93,10 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
 
     bool rightDrive = false;
 
-
+ 
     do{
+      canExit =false;
+      isRunning = true;
        if(checkLimits) CheckLimits();
        float dt = (millis() - prevTime) / 1000;
        prevTime = millis();
@@ -101,9 +107,11 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
           errorL = countTargetL - posL;
           controlEffortL = motorPID.CalculateEffort(errorL, saturationLimit, dt);
 
+
           if (countTargetR != 0){
             encRatio =  (float)countTargetL / (float)countTargetR;
             controlEffortR = (abs(controlEffortL) / abs(encRatio)) * sign(countTargetR);
+                
   
             errorEnc = (posL / encRatio) - posR; 
             controlEffortDiff = motorDiffPID.CalculateEffort(errorEnc, 50, dt);
@@ -122,6 +130,7 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
           if (countTargetL != 0){
             encRatio =  (float)countTargetR / (float)countTargetL;
             controlEffortL = (abs(controlEffortR) / abs(encRatio)) * sign(countTargetL);
+              
   
             errorEnc = (posR / encRatio) - posL; 
             controlEffortDiff = motorDiffPID.CalculateEffort(errorEnc, 50, dt);
@@ -142,18 +151,26 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
 //      Print("Encoder Error: ", errorEnc);
 //      Print("Diff Effort: ", controlEffortDiff);
 
-       analogWrite(motorLSpeedPin, saturate(abs(controlEffortL), 60, 255));
-       analogWrite(motorRSpeedPin, saturate(abs(controlEffortR), 60, 255));
 
        digitalWrite(motorLDirPin, sign(controlEffortL) == -1 ? 0 : 1);
        digitalWrite(motorRDirPin, sign(controlEffortR) == -1 ? 0 : 1);
 
+  
+       analogWrite(motorLSpeedPin, saturate(abs(controlEffortL), 60, 255));
+       analogWrite(motorRSpeedPin, saturate(abs(controlEffortR), 60, 255));
+       
+
+
+
               
-       if ((!rightDrive && abs(errorL) <= 5) || (rightDrive && abs(errorR) <= 5)){
+       if ((!rightDrive && abs(errorL) <= 1) || (rightDrive && abs(errorR) <= 1)){
         Print("Error on exit: ", rightDrive ? errorR : errorL);
+        delay(10);
         canExit = true;
+        Serial.println("exiting");
        }
        delay(1);
+
     }while(!canExit && isRunning);
     Stop();
 }
