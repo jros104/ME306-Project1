@@ -61,14 +61,27 @@ void setup() {
   sei();
 
   FindHomeV2();
-  MoveDistanceV2(100,0,0.5,0.01,0, 50, true);
-  MoveDistanceV2(0,60,0.5,0.01,0, 50, true);
-  isRunning = true;
-//
   delay(1000);
-  //MoveDistanceV2(30, 30, 1, 0.1, 0, 50, true);
-//
-  CircleV2(40,32,1,0.1,0,50);
+  MoveDistanceV2(20,20,0.5,0.005,0, 100, true);
+  Stop();
+ // MoveDistanceV2(0,20,0.5,0.01,0, 50, true);
+  isRunning = true;
+
+  delay(5000);
+
+// Drawing a square
+ MoveDistanceV2(60,0,0.7,0.005,0, 50, true);
+  delay(100);
+  MoveDistanceV2(0,90,0.7,0.005,0, 50, true);
+  delay(100);
+  MoveDistanceV2(-60,0,0.7,0.005,0, 50, true);
+  delay(100);
+  MoveDistanceV2(0,-90,0.7,0.005,0, 50, true);
+
+ // MoveDistanceV2(20,20,0.5,0.005,0, 50, true);
+  
+  //CircleV2(40,32,1,0.1,0,50);
+  
 }
 
 // +--------------------------------+
@@ -80,6 +93,7 @@ void loop() {
   isRunning = true; 
   posR = 0;
   posL = 0;
+  
 
   Stop();
 
@@ -98,12 +112,12 @@ void loop() {
 
 void FindHomeV2(){
   Serial.println("Finding Bottom Switch");
-  MoveDistanceV2(0, -500, 0.05, 0, 0, 50, true);
+  MoveDistanceV2(0, -500, 0.1, 0, 0, 50, true);
   delay(100);
   isRunning = true;
   
   Serial.println("Finding Left Switch");
-  MoveDistanceV2(-500, 0, 0.05, 0, 0, 50, true);
+  MoveDistanceV2(-500, 0, 0.1, 0, 0, 50, true);
   delay(100);
   isRunning = true;
 
