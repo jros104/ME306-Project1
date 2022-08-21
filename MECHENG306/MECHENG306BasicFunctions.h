@@ -17,4 +17,4 @@ void Horizontal(int motorSpeed, int horDir);
 void Vertical(int motorSpeed, int verDir);
 void LeftDiagonal(int motorSpeed, int verDir);
 void RightDiagonal(int motorSpeed, int verDir);
-void Stop();
+void Stop(float uL, float uR);

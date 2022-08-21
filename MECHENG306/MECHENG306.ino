@@ -20,25 +20,28 @@ volatile bool foundHome = false;
 volatile int xCoord, yCoord;
 
 /*
- * RECTANGLE WIDTH AND HEIGHT, CIRCLE DIAMETER
- */
+   RECTANGLE WIDTH AND HEIGHT, CIRCLE DIAMETER
+*/
 volatile const int rectWidth = 5;
 volatile const int rectHeight = 10;
 
 volatile const int circDiam = 5;
+
+const int StartPin = 52;
 
 // +--------------------------------+
 // |             SETUP              |
 // +--------------------------------+
 void setup() {
   isRunning = true;
-  
+
   Serial.begin(9600);
   // Limit Switch setups
   pinMode(leftSwitch, INPUT_PULLUP);
   pinMode(rightSwitch, INPUT_PULLUP);
   pinMode(topSwitch, INPUT_PULLUP);
   pinMode(bottomSwitch, INPUT_PULLUP);
+  pinMode(StartPin, INPUT_PULLUP);
 
   // Motor pin setup
   pinMode(motorRDirPin, OUTPUT);
@@ -49,76 +52,74 @@ void setup() {
   pinMode(encoderAR, INPUT_PULLUP);
   pinMode(encoderBL, INPUT_PULLUP);
   pinMode(encoderBR, INPUT_PULLUP);
-  
-  Stop();
 
   // Allowing encoder interrupts to occur
   // Encoder A motorL/R interrupts
   cli();
   attachInterrupt(digitalPinToInterrupt(encoderAR), EncoderRInterrupt, RISING);
   attachInterrupt(digitalPinToInterrupt(encoderAL), EncoderLInterrupt, RISING);
- 
+
   sei();
 
   FindHomeV2();
   delay(1000);
-  MoveDistanceV2(20,20,0.5,0.005,0, 100, true);
-  Stop();
- // MoveDistanceV2(0,20,0.5,0.01,0, 50, true);
   isRunning = true;
 
-  delay(5000);
-
-// Drawing a square
- MoveDistanceV2(60,0,0.7,0.005,0, 50, true);
-  delay(100);
-  MoveDistanceV2(0,90,0.7,0.005,0, 50, true);
-  delay(100);
-  MoveDistanceV2(-60,0,0.7,0.005,0, 50, true);
-  delay(100);
-  MoveDistanceV2(0,-90,0.7,0.005,0, 50, true);
-
- // MoveDistanceV2(20,20,0.5,0.005,0, 50, true);
-  
-  //CircleV2(40,32,1,0.1,0,50);
-  
 }
 
 // +--------------------------------+
 // |             LOOP               |
 // +--------------------------------+
+
+bool canStart = false;
+
 void loop() {
-  
-  //CheckLimits();
-  isRunning = true; 
-  posR = 0;
-  posL = 0;
-  
 
-  Stop();
+  if (canStart == false && digitalRead(rightSwitch)){
+    canStart = true;
+  }
 
-  // CircleV2(20, 4);
-  // Drawing a square
-//  MoveDistance(0,60,0.5,0.01,0, 100, true);
-//  MoveDistance(60,0,0.5,0.01,0, 100, true);
-//  MoveDistance(0,-60,0.5,0.01,0, 100, true);
-//  MoveDistance(-60,0,0.5,0.01,0, 100, true);
-  delay(1000);
+  if (canStart){
+    MoveDistanceV2(7, 7, 0.9, 0.005, 0.01, 190, false);
+    delay(300);  
+      
+    DrawRectangle(60 * (60.0/61.0), 90, 0.9, 0.005, 0.1, 170, 300);
+    delay(300);
+    
+    MoveDistanceV2(100, 50, 0.9, 0.005, 0, 190, false);
+    delay(300);   
+
+    MoveDistanceV2(0, 2, 0.9, 0.005, 0, 140, true);
+    CircleV3(40,11);
+    delay(300);   
+    canStart = false;
+  }
+  delay(10);
+}
+
+void DrawRectangle(float hor, float ver, float Kp, float Ki, float Kd, int sat, int delayAmount){
+  MoveDistanceV2(hor, 0, Kp, Ki, Kd, sat, true);
+  delay(delayAmount);
+  MoveDistanceV2(0, ver, Kp, Ki, Kd, sat, true);
+  delay(delayAmount);
+  MoveDistanceV2(-hor, 0, Kp, Ki, Kd, sat, true);
+  delay(delayAmount);
+  MoveDistanceV2(0, -ver, Kp, Ki, Kd, sat, true);
 }
 
 // +--------------------------------+
 // |           FIND HOME            |
 // +--------------------------------+
 
-void FindHomeV2(){
-  Serial.println("Finding Bottom Switch");
-  MoveDistanceV2(0, -500, 0.1, 0, 0, 50, true);
-  delay(100);
+void FindHomeV2() {
+  //Serial.println("Finding Bottom Switch");
+  MoveDistanceV2(0, -500, 0.7, 0.005, 0, 50, true);
+  delay(300);
   isRunning = true;
-  
-  Serial.println("Finding Left Switch");
-  MoveDistanceV2(-500, 0, 0.1, 0, 0, 50, true);
-  delay(100);
+
+  //Serial.println("Finding Left Switch");
+  MoveDistanceV2(-500, 0, 0.7, 0.005, 0, 50, true);
+  delay(300);
   isRunning = true;
 
   delay(1000);

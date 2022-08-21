@@ -21,7 +21,7 @@ const int encoderBL = 46, encoderBR = 44;
 
 volatile int posL = 0, posR = 0;
 
-#define CALCOUNT 2300.0
+#define CALCOUNT 2220.0
 #define CALDIST 50.0
 #define PULLEYDIAM (CALDIST / (PI * (CALCOUNT / 2064.0)))
 
@@ -36,12 +36,7 @@ float CountToDistance(float count) {
 // |       DISTANCE TO COUNT        |
 // +--------------------------------+
 float DistanceToCount(float distance) {
-  if (abs(distance) < 1) return 0;
-  float count = (distance * 2064.0) / (PI * PULLEYDIAM);
-  if (abs(count) == 0){
-    count = 0;
-  }
-  return count;
+  return (distance * 2064.0) / (PI * PULLEYDIAM);;
 }
 
 // +--------------------------------+
@@ -88,6 +83,7 @@ void EncoderLInterrupt() {
 // |              STOP              |
 // +--------------------------------+
 void Stop(){
-    analogWrite(motorRSpeedPin, 0);
-    analogWrite(motorLSpeedPin, 0);
+  analogWrite(motorRSpeedPin, 0);
+  analogWrite(motorLSpeedPin, 0);
+    
 }

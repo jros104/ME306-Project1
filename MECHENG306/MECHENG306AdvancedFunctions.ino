@@ -14,11 +14,16 @@
 #define ACCELERATION_TIME 300
 #define EXIT_THRESHOLD 5
 
+#define SIZEARRAY 2000
 
-volatile bool isRunning;
+volatile bool isRunning = true;
+
+float arrayOfData[SIZEARRAY][4] = {0};
+int iteration = 0;
 
 // Limit switch pins
 const int leftSwitch = 18, rightSwitch = 19, topSwitch = 21, bottomSwitch = 20;
+
 
 // +--------------------------------+
 // |          CHECK LIMITS          |
@@ -30,31 +35,36 @@ void CheckLimits(){
 
     // Move the head away from the switch
     if(digitalRead(topSwitch)) { 
-      Serial.println("Top Switch");
-      MoveDistanceV2(0, -13, 0.2, 0, 0, 50, false); 
+      //Serial.println("Top Switch");
+      MoveDistanceV2(0, -13, 0.7, 0.005, 0, 90, false); 
+      delay(100);
       isRunning = false; 
       
     }
     if(digitalRead(bottomSwitch)) { 
-      Serial.println("Bottom Switch");
-      MoveDistanceV2(0, 13, 0.2, 0, 0, 50, false); 
+      //Serial.println("Bottom Switch");
+      MoveDistanceV2(0, 13, 0.7, 0.005, 0, 90, false); 
+      delay(100);
       isRunning = false; 
       
     }
     if(digitalRead(rightSwitch)) { 
-      Serial.println("Right Switch");
-      MoveDistanceV2(-13, 0, 0.2, 0, 0, 50, false); 
+      //Serial.println("Right Switch");
+      MoveDistanceV2(-13, 0, 0.7, 0.005, 0, 90, false); 
+      delay(100);
       isRunning = false; 
     }
     if(digitalRead(leftSwitch)) { 
-      Serial.println("Left Switch");
-      MoveDistanceV2(13, 0, 0.2, 0, 0, 50, false); 
+      //Serial.println("Left Switch");
+      MoveDistanceV2(13, 0, 0.7, 0.005, 0, 90, false); 
+      delay(100);
       isRunning = false; 
     }
     
   }
 }
 
+#define ACCELTIME 400
 
 // +--------------------------------+
 // |        MOVE DISTANCE V2        |
@@ -63,7 +73,7 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
    
     // Create the PID Controllers with the assigned values
     PIDController motorPID(Kp, Ki, Kd);         // Motor base power PID controller
-    PIDController motorDiffPID(1,0.005,0);        // Encoder difference PID controller
+    PIDController motorDiffPID(0.9,0.005,0);        // Encoder difference PID controller
    
     posL = 0;
     posR = 0;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
@@ -73,13 +83,13 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
     float distL = xDist + yDist;
     int countTargetL = DistanceToCount(distL);
 
-    Print("Left target: ", countTargetL);
+    //Print("Left target: ", countTargetL);
     
 
     float distR = xDist - yDist;
     int countTargetR = DistanceToCount(distR);
 
-    Print("Right target: ", countTargetR);
+    //Print("Right target: ", countTargetR);
 
     float prevTime = millis();
 
@@ -94,12 +104,13 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
     bool rightDrive = false;
     float initialTime = millis();
 
- 
+
     do{
       canExit =false;
       isRunning = true;
        if(checkLimits) CheckLimits();
        float dt = (millis() - prevTime) / 1000;
+  
        prevTime = millis();
 
        if (abs(countTargetL) > abs(countTargetR)){
@@ -112,8 +123,8 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
           if (countTargetR != 0){
             encRatio =  (float)countTargetL / (float)countTargetR;
             controlEffortR = (abs(controlEffortL) / abs(encRatio)) * sign(countTargetR);
-                
-  
+
+            
             errorEnc = (posL / encRatio) - posR; 
             controlEffortDiff = motorDiffPID.CalculateEffort(errorEnc, 50, dt);
   
@@ -141,69 +152,27 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
             controlEffortL = 0;
           }
        }
-       if(millis()-initialTime < 1000){
-       controlEffortR *=  (saturate(millis() - initialTime, 0, 1000.0) / 1000.0);
-       controlEffortL *=  (saturate(millis() - initialTime, 0, 1000.0) / 1000.0);
-       }
 
-       controlEffortR += 60 * sign(controlEffortR);
-       controlEffortL += 60 * sign(controlEffortL);
+       controlEffortR *=  (saturate(millis() - initialTime, 0, ACCELTIME) / ACCELTIME);
+       controlEffortL *=  (saturate(millis() - initialTime, 0, ACCELTIME) / ACCELTIME);
 
-//      rightDrive ? Print("Right error: ", errorR) : Print("Left error: ", errorL);
-//      Print("Right effort: ", controlEffortR);
-//      Print("Left effort: ", controlEffortL);
-//      Print("Encoder Ratio: ", encRatio);
-//      Print("Encoder Error: ", errorEnc);
-//      Print("Diff Effort: ", controlEffortDiff);
-
-
-
-
+       controlEffortR += 65 * sign(controlEffortR);
+       controlEffortL += 65 * sign(controlEffortL);
+  
        digitalWrite(motorLDirPin, sign(controlEffortL) == -1 ? 0 : 1);
        digitalWrite(motorRDirPin, sign(controlEffortR) == -1 ? 0 : 1);
 
-  
        analogWrite(motorLSpeedPin, saturate(abs(controlEffortL), 60, 255));
        analogWrite(motorRSpeedPin, saturate(abs(controlEffortR), 60, 255));
        
-
-
-
               
        if ((!rightDrive && abs(errorL) <= 1) || (rightDrive && abs(errorR) <= 1)){
-        Print("Error on exit: ", rightDrive ? errorR : errorL);
+        //Print("Error on exit: ", rightDrive ? errorR : errorL);
         delay(10);
         canExit = true;
-        Serial.println("exiting");
+        //Serial.println("exiting");
        }
-       delay(1);
 
     }while(!canExit && isRunning);
     Stop();
-}
-
-// +--------------------------------+
-// |          CIRCLE V2             |
-// +--------------------------------+
-void CircleV2(float radius, int divisions, float kp, float ki, float kd, float saturationLimit){
-  float xyDistsFromCentre[divisions][2] = {0};
-  float angle = (PI * 2.0) / (float)divisions;
-
-  for (int i = 0; i < divisions; i++){
-    xyDistsFromCentre[i][0] = (radius * cos(angle*i));
-    xyDistsFromCentre[i][1] = (radius * sin(angle*i));
-  }
-
-  float xyDistsToNext[divisions][2] = {0};
-
-  for (int i = 0; i < divisions; i++){
-    xyDistsToNext[i][0] = xyDistsFromCentre[(i + 1 >= divisions ? i - divisions + 1: i + 1)][0] - xyDistsFromCentre[i][0];
-    xyDistsToNext[i][1] = xyDistsFromCentre[(i + 1 >= divisions ? i - divisions + 1: i + 1)][1] - xyDistsFromCentre[i][1];
-  }
-
-  for (int i = 0; i < divisions; i++){
-    isRunning = true;
-    MoveDistanceV2(xyDistsToNext[i][0],xyDistsToNext[i][1], kp, ki, kd, saturationLimit, true);
-  }
-
 }
