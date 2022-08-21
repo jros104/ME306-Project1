@@ -86,7 +86,7 @@ void loop() {
     DrawRectangle(60 * (60.0/58.6), 90 * (90.0/88), 0.9, 0.005, 0.1, 170, 300);
     delay(300);
     
-    MoveDistanceV2(80, 50, 0.9, 0.005, 0, 190, false);
+    MoveDistanceV2(100, 50, 0.9, 0.005, 0, 190, false);
     delay(300);   
 
     CircleV3(40,11);
