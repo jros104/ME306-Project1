@@ -36,7 +36,7 @@ float CountToDistance(float count) {
 // |       DISTANCE TO COUNT        |
 // +--------------------------------+
 float DistanceToCount(float distance) {
-  return (distance * 2064.0) / (PI * PULLEYDIAM);;
+  return distance != 0 ? (distance * 2064.0) / (PI * PULLEYDIAM): 0;
 }
 
 // +--------------------------------+

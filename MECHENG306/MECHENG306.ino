@@ -83,13 +83,12 @@ void loop() {
     MoveDistanceV2(7, 7, 0.9, 0.005, 0.01, 190, false);
     delay(300);  
       
-    DrawRectangle(60 * (60.0/61.0), 90, 0.9, 0.005, 0.1, 170, 300);
+    DrawRectangle(60 * (60.0/58.6), 90 * (90.0/88), 0.9, 0.005, 0.1, 170, 300);
     delay(300);
     
-    MoveDistanceV2(100, 50, 0.9, 0.005, 0, 190, false);
+    MoveDistanceV2(80, 50, 0.9, 0.005, 0, 190, false);
     delay(300);   
 
-    MoveDistanceV2(0, 2, 0.9, 0.005, 0, 140, true);
     CircleV3(40,11);
     delay(300);   
     canStart = false;
@@ -113,12 +112,12 @@ void DrawRectangle(float hor, float ver, float Kp, float Ki, float Kd, int sat, 
 
 void FindHomeV2() {
   //Serial.println("Finding Bottom Switch");
-  MoveDistanceV2(0, -500, 0.7, 0.005, 0, 50, true);
+  MoveDistanceV2(0, -250, 0.7, 0.005, 0, 50, true);
   delay(300);
   isRunning = true;
 
   //Serial.println("Finding Left Switch");
-  MoveDistanceV2(-500, 0, 0.7, 0.005, 0, 50, true);
+  MoveDistanceV2(-250, 0, 0.7, 0.005, 0, 50, true);
   delay(300);
   isRunning = true;
 

@@ -1,20 +1,53 @@
-filename = 'CircleV3Run1.txt';
+close
+clc
+clear
 
-FID = fopen(filename, 'r');
+filename1 = 'MotorPowers1.txt';
+filename2 = 'MotorPowers2.txt';
+filename3 = 'MotorPowers3.txt';
 
-data = fscanf(FID, '%f', [5, inf]);
-T = data(1,:);
-TL = data(2,:);
-TR = data(3,:);
-posL = data(4,:);
-posR = data(5,:);
+FID1 = fopen(filename1, 'r');
+FID2 = fopen(filename2, 'r');
+FID3 = fopen(filename3, 'r');
+
+
+data = fscanf(FID1, '%f', [3, inf]);
+I = data(1,:);
+DR1 = data(2,:);
+DL1 = data(3,:);
+
+data = fscanf(FID2, '%f', [3, inf]);
+DR2 = data(2,:);
+DL2 = data(3,:);
+
+data = fscanf(FID3, '%f', [3, inf]);
+DR3 = data(2,:);
+DL3 = data(3,:);
+
+for i = 1 : 
 
 figure(1);
-subplot(1,2,1);
-plot(T,TL,'r', T, posL, 'b');
-legend('Target Left', 'posL');
-gird
-grid min
-subplot(1,2,2);
-plot(T,TR,'r', T, posR, 'b');
-legend('Target Right', 'posR');
+subplot(1,3,1);
+plot(I,DR1,'r', I, DL1, 'b');
+legend('DR', 'DL');
+ylabel('Distance (counts)');
+xlabel('Power)');
+grid on
+grid minor
+
+subplot(1,3,2);
+plot(I,DR2,'r', I, DL2, 'b');
+legend('DR', 'DL');
+ylabel('Distance (counts)');
+xlabel('Power)');
+grid on
+grid minor
+
+subplot(1,3,3);
+plot(I,DR3,'r', I, DL3, 'b');
+legend('DR', 'DL');
+ylabel('Distance (counts)');
+xlabel('Power)');
+grid on
+grid minor
+

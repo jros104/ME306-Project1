@@ -73,7 +73,7 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
    
     // Create the PID Controllers with the assigned values
     PIDController motorPID(Kp, Ki, Kd);         // Motor base power PID controller
-    PIDController motorDiffPID(0.9,0.005,0);        // Encoder difference PID controller
+    PIDController motorDiffPID(10,0.005,0);        // Encoder difference PID controller
    
     posL = 0;
     posR = 0;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
@@ -126,9 +126,10 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
 
             
             errorEnc = (posL / encRatio) - posR; 
-            controlEffortDiff = motorDiffPID.CalculateEffort(errorEnc, 50, dt);
+            controlEffortDiff = motorDiffPID.CalculateEffort(errorEnc, 190, dt);
   
             controlEffortR += controlEffortL != 0 ? controlEffortDiff : 0;
+            //controlEffortL -= controlEffortL != 0 ? controlEffortDiff : 0;
           }else{
             controlEffortR = 0;
           }
@@ -145,19 +146,17 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
               
   
             errorEnc = (posR / encRatio) - posL; 
-            controlEffortDiff = motorDiffPID.CalculateEffort(errorEnc, 50, dt);
+            controlEffortDiff = motorDiffPID.CalculateEffort(errorEnc, 190, dt);
   
             controlEffortL += controlEffortR != 0 ? controlEffortDiff : 0;
+            //controlEffortR -= controlEffortR != 0 ? controlEffortDiff : 0;
           }else{
             controlEffortL = 0;
           }
        }
 
-       controlEffortR *=  (saturate(millis() - initialTime, 0, ACCELTIME) / ACCELTIME);
-       controlEffortL *=  (saturate(millis() - initialTime, 0, ACCELTIME) / ACCELTIME);
-
-       controlEffortR += 65 * sign(controlEffortR);
-       controlEffortL += 65 * sign(controlEffortL);
+       controlEffortR += 60 * sign(controlEffortR);
+       controlEffortL += 60 * sign(controlEffortL);
   
        digitalWrite(motorLDirPin, sign(controlEffortL) == -1 ? 0 : 1);
        digitalWrite(motorRDirPin, sign(controlEffortR) == -1 ? 0 : 1);
@@ -165,14 +164,38 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
        analogWrite(motorLSpeedPin, saturate(abs(controlEffortL), 60, 255));
        analogWrite(motorRSpeedPin, saturate(abs(controlEffortR), 60, 255));
        
-              
        if ((!rightDrive && abs(errorL) <= 1) || (rightDrive && abs(errorR) <= 1)){
-        //Print("Error on exit: ", rightDrive ? errorR : errorL);
-        delay(10);
+        Stop();
         canExit = true;
-        //Serial.println("exiting");
        }
 
     }while(!canExit && isRunning);
     Stop();
+}
+
+void TestMotorPowers(){
+  posL = 0;
+  posR = 0;
+  float prevL = 0, prevR = 0;
+  for (int i = 0; i < 171; i++){
+    CheckLimits();
+    digitalWrite(motorLDirPin, HIGH);
+     digitalWrite(motorRDirPin, HIGH);
+  
+     analogWrite(motorLSpeedPin, i);
+     analogWrite(motorRSpeedPin, i);
+
+     delay(90);
+
+     Serial.print(i);
+     Serial.print(" ");
+     Serial.print(posR - prevR);
+     Serial.print(" ");
+     Serial.println(posL - prevL);
+
+     prevL = posL;
+     prevR = posR;
+     
+  }
+  Stop();
 }
