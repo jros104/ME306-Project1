@@ -52,21 +52,6 @@ void CircleV3(float radius, float period){
 
     digitalWrite(motorLDirPin, sign(controlEffortL) == -1 ? 0 : 1);
     digitalWrite(motorRDirPin, sign(controlEffortR) == -1 ? 0 : 1);
-
-
-    Serial.print(T);
-    Serial.print("  ");
-    
-    Serial.print(targetL);
-    Serial.print("  ");
-
-    Serial.print(targetR);
-    Serial.print("  ");
-
-    Serial.print(posL);
-    Serial.print("  ");
-
-    Serial.println(posR);
    
     delay(10);
     
