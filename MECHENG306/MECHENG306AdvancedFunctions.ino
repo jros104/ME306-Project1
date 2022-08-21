@@ -63,10 +63,10 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
    
     // Create the PID Controllers with the assigned values
     PIDController motorPID(Kp, Ki, Kd);         // Motor base power PID controller
-    PIDController motorDiffPID(0.7,0.005,0);        // Encoder difference PID controller
+    PIDController motorDiffPID(1,0.005,0);        // Encoder difference PID controller
    
     posL = 0;
-    posR = 0;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         `
+    posR = 0;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 
     bool canExit = false;
 
@@ -92,6 +92,7 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
     float errorEnc;
 
     bool rightDrive = false;
+    float initialTime = millis();
 
  
     do{
@@ -140,6 +141,10 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
             controlEffortL = 0;
           }
        }
+       if(millis()-initialTime < 1000){
+       controlEffortR *=  (saturate(millis() - initialTime, 0, 1000.0) / 1000.0);
+       controlEffortL *=  (saturate(millis() - initialTime, 0, 1000.0) / 1000.0);
+       }
 
        controlEffortR += 60 * sign(controlEffortR);
        controlEffortL += 60 * sign(controlEffortL);
@@ -150,6 +155,8 @@ void MoveDistanceV2(float xDist, float yDist, float Kp, float Ki, float Kd, floa
 //      Print("Encoder Ratio: ", encRatio);
 //      Print("Encoder Error: ", errorEnc);
 //      Print("Diff Effort: ", controlEffortDiff);
+
+
 
 
        digitalWrite(motorLDirPin, sign(controlEffortL) == -1 ? 0 : 1);
